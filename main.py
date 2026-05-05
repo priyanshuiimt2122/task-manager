@@ -10,19 +10,20 @@ from routes import user, project, task
 import os
 import uvicorn
 
-
 app = FastAPI()
 
-# DB
-Base.metadata.create_all(bind=engine)
+# 🔥 SAFE DB INIT (no crash)
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as e:
+    print("DB ERROR:", e)
 
 # Routers
 app.include_router(user.router)
 app.include_router(project.router)
 app.include_router(task.router)
 
-
-
+# 🔥 SAFE TEMPLATE PATH
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
@@ -48,7 +49,7 @@ def login_page(request: Request):
     )
 
 
-# 🔥 DEPLOY SAFE RUN
+# 🔥 RUN CONFIG (Railway compatible)
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run("main:app", host="0.0.0.0", port=port)
