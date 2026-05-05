@@ -36,16 +36,18 @@ def home():
 @app.get("/dashboard_page", response_class=HTMLResponse)
 def dashboard_page(request: Request):
     return templates.TemplateResponse(
-        "dashboard.html",
-        {"request": request}
+    request=request,
+    name="dashboard.html",
+    context={}
     )
 
 
 @app.get("/login_page", response_class=HTMLResponse)
 def login_page(request: Request):
     return templates.TemplateResponse(
-        "login.html",
-        {"request": request}
+    request=request,
+    name="login.html",
+    context={}
     )
 
 
