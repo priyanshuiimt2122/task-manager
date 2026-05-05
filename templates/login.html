@@ -1,9 +1,156 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Login</title>
+    <title>Auth</title>
+    <style>
+        body {
+            background: #0f172a;
+            color: #e2e8f0;
+            font-family: Arial;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background: #1e293b;
+            padding: 30px;
+            border-radius: 10px;
+            width: 320px;
+            text-align: center;
+        }
+
+        input, select {
+            width: 90%;
+            padding: 10px;
+            margin: 8px;
+            border-radius: 5px;
+            border: none;
+        }
+
+        button {
+            padding: 10px;
+            width: 95%;
+            background: #22c55e;
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        .tabs button {
+            width: 45%;
+            margin: 5px;
+            background: #334155;
+        }
+
+        .active { background: #22c55e !important; }
+        .hidden { display: none; }
+    </style>
 </head>
+
 <body>
-    <h2>Login Page</h2>
+
+<div class="container">
+
+    <h2>🚀 Task Manager</h2>
+
+    <div class="tabs">
+        <button id="loginTab" class="active" onclick="showLogin()">Login</button>
+        <button id="signupTab" onclick="showSignup()">Signup</button>
+    </div>
+
+    <div id="loginForm">
+        <input id="loginEmail" placeholder="Email">
+        <input id="loginPassword" type="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+    </div>
+
+    <div id="signupForm" class="hidden">
+        <input id="nameInput" placeholder="Name">
+        <input id="emailInput" placeholder="Email">
+        <input id="passwordInput" type="password" placeholder="Password">
+
+        <select id="roleInput">
+            <option value="admin">Admin</option>
+            <option value="member">Member</option>
+        </select>
+
+        <button onclick="signup()">Signup</button>
+    </div>
+
+</div>
+
+<script>
+
+function showLogin() {
+    document.getElementById("loginForm").classList.remove("hidden");
+    document.getElementById("signupForm").classList.add("hidden");
+}
+
+function showSignup() {
+    document.getElementById("signupForm").classList.remove("hidden");
+    document.getElementById("loginForm").classList.add("hidden");
+}
+
+// LOGIN
+function login() {
+
+    let email = document.getElementById("loginEmail").value;
+    let password = document.getElementById("loginPassword").value;
+
+    if(!email || !password){
+        alert("Fill all fields");
+        return;
+    }
+
+    fetch("/login", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ email, password })
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        if(data.user_id){
+            localStorage.setItem("user_id", data.user_id);
+            localStorage.setItem("role", data.role);
+            localStorage.setItem("name", data.name || "User");
+
+            window.location.href = "/dashboard_page";
+        } else {
+            alert("Login failed");
+        }
+
+    });
+}
+
+// SIGNUP
+function signup() {
+
+    let name = document.getElementById("nameInput").value;
+    let email = document.getElementById("emailInput").value;
+    let password = document.getElementById("passwordInput").value;
+    let role = document.getElementById("roleInput").value;
+
+    if(!name || !email || !password){
+        alert("Fill all fields");
+        return;
+    }
+
+    fetch("/signup", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ name, email, password, role })
+    })
+    .then(()=>{
+        alert("Signup successful");
+        showLogin();
+    });
+}
+
+</script>
+
 </body>
 </html>
