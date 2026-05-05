@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body { background:#0f172a; color:#e2e8f0; font-family:Arial; }
+        h2 { text-align:center; }
+
+        .container {
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:20px;
+            width:90%;
+            margin:auto;
+        }
+
+        .full { grid-column: span 2; }
+
+        .card {
+            background:#1e293b;
+            padding:20px;
+            border-radius:10px;
+        }
+
+        button {
+            padding:10px;
+            margin-top:10px;
+            border:none;
+            background:#22c55e;
+            color:white;
+            cursor:pointer;
+            border-radius:5px;
+        }
+
+        input, select {
+            padding:8px;
+            margin:5px 0;
+            width:100%;
+            border-radius:5px;
+            border:none;
+        }
+
+        .logout { background:red; float:right; }
+
+        .task {
+            background:#334155;
+            padding:10px;
+            margin:10px 0;
+            border-radius:5px;
+        }
+
+        .pending { color:orange; }
+        .done { color:green; }
+        .overdue { color:red; }
+
+        #loader { display:none; text-align:center; }
+        #toast {
+            position:fixed;
+            bottom:20px;
+            right:20px;
+            background:#22c55e;
+            padding:10px;
+            display:none;
+        }
+
+        #chart {
+            max-width:260px;
+            max-height:260px;
+            margin:auto;
+        }
+
+        .progress {
+            height:10px;
+            background:#334155;
+            border-radius:10px;
+            margin-top:10px;
+        }
+
+        .progress-bar {
+            height:10px;
+            background:#22c55e;
+            border-radius:10px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2 id="welcome"></h2>
+<button class="logout" onclick="logout()">Logout</button>
+
+<div id="loader">⏳ Loading...</div>
+<div id="toast"></div>
+
+<div class="container">
+
+    <div class="card full">
+        Total: <span id="total"></span> |
+        Done: <span id="done"></span> |
+        Pending: <span id="pending"></span> |
+        In Progress: <span id="inprogress"></span> |
+        Overdue: <span id="overdue"></span>
+
+        <div class="progress">
+            <div id="progressBar" class="progress-bar"></div>
+        </div>
+    </div>
+
+    <div class="card full">
+        <canvas id="chart"></canvas>
+    </div>
+
+    <div class="card" id="projectSection">
+        <input id="projectName" placeholder="Project Name">
+        <button onclick="createProject()">Create Project</button>
+    </div>
+
+    <div class="card" id="memberSection">
+        <select id="memberUser"></select>
+        <select id="memberProject"></select>
+        <button onclick="addMember()">Add Member</button>
+    </div>
+
+    <div class="card" id="taskSection">
+        <input id="title" placeholder="Task Title">
+        <select id="userSelect"></select>
+        <select id="projectSelect"></select>
+        <input id="date" type="date">
+        <button onclick="createTask()">Create Task</button>
+    </div>
+
+    <div class="card">
+        <input id="taskId" placeholder="Task ID">
+        <select id="status">
+            <option value="pending">Pending</option>
+            <option value="in-progress">In Progress</option>
+            <option value="done">Done</option>
+        </select>
+        <button onclick="updateTask()">Update</button>
+    </div>
+
+    <div class="card full">
+        <select id="filterProject"></select>
+        <button onclick="loadTasks()">Filter</button>
+        <div id="taskList"></div>
+    </div>
+
+</div>
+
+<script>
+
+let chart;
+
+window.onload = function(){
+
+    let name = localStorage.getItem("name") || "User";
+    let role = localStorage.getItem("role")?.toLowerCase();
+
+    document.getElementById("welcome").innerText =
+        "👋 Welcome " + name;
+
+    if(role !== "admin"){
+        document.getElementById("projectSection").style.display="none";
+        document.getElementById("memberSection").style.display="none";
+        document.getElementById("taskSection").style.display="none";
+    }
+
+    loadUsers();
+    loadProjectsDropdown();
+    loadMemberDropdowns();
+    loadFilterProjects();
+    loadTasks();
+};
+
+function logout(){
+    localStorage.clear();
+    window.location.href="/login_page";
+}
+
+// USERS
+function loadUsers(){
+    fetch("/users")
+    .then(r=>r.json())
+    .then(data=>{
+        let userSelect=document.getElementById("userSelect");
+        let memberUser=document.getElementById("memberUser");
+
+        userSelect.innerHTML="";
+        memberUser.innerHTML="";
+
+        data.forEach(u=>{
+            let opt=document.createElement("option");
+            opt.value=u.id;
+            opt.text=u.name;
+            userSelect.appendChild(opt.cloneNode(true));
+            memberUser.appendChild(opt.cloneNode(true));
+        });
+    });
+}
+
+// PROJECT
+function createProject(){
+    fetch("/create_project",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+            name:document.getElementById("projectName").value,
+            owner_id:Number(localStorage.getItem("user_id"))
+        })
+    })
+    .then(()=>showToast("Project Created"));
+}
+
+function loadProjectsDropdown(){
+    fetch("/projects")
+    .then(r=>r.json())
+    .then(data=>{
+        let select=document.getElementById("projectSelect");
+        select.innerHTML="";
+        data.forEach(p=>{
+            let opt=document.createElement("option");
+            opt.value=p.id;
+            opt.text=p.name;
+            select.appendChild(opt);
+        });
+    });
+}
+
+// MEMBER
+function loadMemberDropdowns(){
+    fetch("/projects")
+    .then(r=>r.json())
+    .then(data=>{
+        let select=document.getElementById("memberProject");
+        select.innerHTML="";
+        data.forEach(p=>{
+            let opt=document.createElement("option");
+            opt.value=p.id;
+            opt.text=p.name;
+            select.appendChild(opt);
+        });
+    });
+}
+
+function addMember(){
+    fetch("/add_member",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+            admin_id:Number(localStorage.getItem("user_id")),
+            user_id:Number(document.getElementById("memberUser").value),
+            project_id:Number(document.getElementById("memberProject").value)
+        })
+    })
+    .then(()=>showToast("Member Added"));
+}
+
+// FILTER
+function loadFilterProjects(){
+    fetch("/projects")
+    .then(r=>r.json())
+    .then(data=>{
+        let select=document.getElementById("filterProject");
+        select.innerHTML="<option value=''>All</option>";
+        data.forEach(p=>{
+            let opt=document.createElement("option");
+            opt.value=p.id;
+            opt.text=p.name;
+            select.appendChild(opt);
+        });
+    });
+}
+
+// TASKS
+function loadTasks(){
+
+    let userId = localStorage.getItem("user_id");
+    let projectId = document.getElementById("filterProject").value;
+
+    let url = "/dashboard/" + userId;
+    if(projectId) url += "?project_id=" + projectId;
+
+    fetch(url)
+    .then(r=>r.json())
+    .then(data=>{
+
+        let list=document.getElementById("taskList");
+        list.innerHTML="";
+
+        let total=data.tasks.length;
+        let done=data.tasks.filter(t=>t.status==="done").length;
+        let pending=data.tasks.filter(t=>t.status==="pending").length;
+        let inprogress=data.tasks.filter(t=>t.status==="in-progress").length;
+
+        let today = new Date().toISOString().split("T")[0];
+
+        let overdue = data.tasks.filter(t =>
+            t.due_date && t.due_date < today && t.status !== "done"
+        ).length;
+
+        document.getElementById("total").innerText=total;
+        document.getElementById("done").innerText=done;
+        document.getElementById("pending").innerText=pending;
+        document.getElementById("inprogress").innerText=inprogress;
+        document.getElementById("overdue").innerText=overdue;
+
+        let percent = total ? (done/total)*100 : 0;
+        document.getElementById("progressBar").style.width = percent + "%";
+
+        renderChart(done,pending,inprogress);
+
+        data.tasks.forEach(t=>{
+            let div=document.createElement("div");
+            div.className="task "+t.status;
+            div.innerHTML=`#${t.id} - ${t.title} - ${t.status}`;
+            list.appendChild(div);
+        });
+    });
+}
+
+// CREATE TASK
+function createTask(){
+    fetch("/create_task",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+            title:document.getElementById("title").value,
+            assigned_to:Number(document.getElementById("userSelect").value),
+            project_id:Number(document.getElementById("projectSelect").value),
+            due_date:document.getElementById("date").value,
+            creator_id:Number(localStorage.getItem("user_id"))
+        })
+    })
+    .then(()=>{ showToast("Task Created"); loadTasks(); });
+}
+
+// UPDATE TASK
+function updateTask(){
+    fetch("/update_task/"+Number(document.getElementById("taskId").value),{
+        method:"PUT",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+            status:document.getElementById("status").value,
+            user_id:Number(localStorage.getItem("user_id"))
+        })
+    })
+    .then(()=>{ showToast("Updated"); loadTasks(); });
+}
+
+// CHART (UPDATED)
+function renderChart(done,pending,inprogress){
+
+    if(chart) chart.destroy();
+
+    chart=new Chart(document.getElementById("chart"),{
+        type:"doughnut",
+        data:{
+            labels:["Done","Pending","In Progress"],
+            datasets:[{
+                data:[done,pending,inprogress],
+                backgroundColor:["green","orange","blue"]
+            }]
+        },
+        options:{
+            responsive:true,
+            maintainAspectRatio:false
+        }
+    });
+}
+
+function showToast(msg){
+    let t=document.getElementById("toast");
+    t.innerText=msg;
+    t.style.display="block";
+    setTimeout(()=>t.style.display="none",2000);
+}
+
+</script>
+
+</body>
+</html>
