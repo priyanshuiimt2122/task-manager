@@ -5,9 +5,7 @@ from fastapi.templating import Jinja2Templates
 from database import engine, Base
 import models
 
-
 from routes import user, project, task
-
 
 import os
 import uvicorn
@@ -15,14 +13,18 @@ import uvicorn
 
 app = FastAPI()
 
+# DB
 Base.metadata.create_all(bind=engine)
 
+# Routers
 app.include_router(user.router)
 app.include_router(project.router)
 app.include_router(task.router)
 
-# IMPORTANT
-templates = Jinja2Templates(directory="templates")
+
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 
 @app.get("/")
@@ -37,6 +39,7 @@ def dashboard_page(request: Request):
         {"request": request}
     )
 
+
 @app.get("/login_page", response_class=HTMLResponse)
 def login_page(request: Request):
     return templates.TemplateResponse(
@@ -44,6 +47,8 @@ def login_page(request: Request):
         {"request": request}
     )
 
+
+# 🔥 DEPLOY SAFE RUN
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run("main:app", host="0.0.0.0", port=port)
